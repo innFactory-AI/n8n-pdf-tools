@@ -1,0 +1,80 @@
+# Manual deployment next to n8n (cluster-internal only, no ingress).
+#   kubectl -n n8n apply -f deploy/k8s.yaml
+# n8n calls it at http://n8n-pdf-tools.n8n.svc.cluster.local:8080/v1/...
+# Pin the image by tag + digest (see the release's CI summary).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: n8n-pdf-tools
+  labels: { app: n8n-pdf-tools }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: n8n-pdf-tools }
+  template:
+    metadata:
+      labels: { app: n8n-pdf-tools }
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: pdf-tools
+          image: ghcr.io/innfactory-ai/n8n-pdf-tools:1.0.0
+          ports:
+            - { name: http, containerPort: 8080 }
+          env:
+            - { name: WORKERS, value: "2" }
+            - { name: MAX_CONCURRENT_JOBS, value: "2" }  # per worker
+            - { name: MAX_UPLOAD_MB, value: "100" }
+            # optional shared token (Authorization: Bearer … or X-API-Key) from a secret:
+            # - name: API_TOKEN
+            #   valueFrom: { secretKeyRef: { name: n8n-pdf-tools, key: api-token } }
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { memory: 1Gi }
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 20
+            failureThreshold: 6
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: tmp
+          emptyDir: { sizeLimit: 2Gi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: n8n-pdf-tools
+  labels: { app: n8n-pdf-tools }
+spec:
+  type: ClusterIP
+  selector: { app: n8n-pdf-tools }
+  ports:
+    - { name: http, port: 8080, targetPort: http }
+---
+# Only pods in the same namespace (n8n) may call the service.
+# Has no effect if the cluster has no network policy engine.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: n8n-pdf-tools
+spec:
+  podSelector:
+    matchLabels: { app: n8n-pdf-tools }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector: {}
+      ports:
+        - { port: 8080 }
