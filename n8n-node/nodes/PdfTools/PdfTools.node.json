@@ -1,0 +1,18 @@
+{
+	"node": "n8n-nodes-innfactory-pdf-tools.pdfTools",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Data & Storage", "Utility"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://github.com/innFactory-AI/n8n-pdf-tools/tree/main/n8n-node#credentials"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://github.com/innFactory-AI/n8n-pdf-tools/tree/main/n8n-node#readme"
+			}
+		]
+	}
+}

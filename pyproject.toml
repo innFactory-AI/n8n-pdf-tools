@@ -1,0 +1,32 @@
+[project]
+name = "n8n-pdf-tools"
+description = "Stateless HTTP API for PDF manipulation, called from n8n cluster-internally"
+requires-python = ">=3.12"
+version = "0.0.0"  # real version comes from the git tag (APP_VERSION in the image)
+dependencies = [
+    "fastapi>=0.120",
+    "uvicorn[standard]>=0.38",
+    "python-multipart>=0.0.20",
+    "pikepdf>=10",
+    "pypdf>=6",
+    "pypdfium2>=5",
+    "pdfplumber>=0.11",
+    "img2pdf>=0.6",
+    "reportlab>=4.4",
+    "pillow>=11",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "httpx>=0.28", "ruff>=0.14"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+ignore = ["B008"]
