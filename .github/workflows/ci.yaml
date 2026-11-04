@@ -17,8 +17,10 @@ name: CI/CD
 on:
   push:
     branches: [main]
+    paths-ignore: ['n8n-node/**', '.github/workflows/n8n-node.yaml']
   pull_request:
     branches: [main]
+    paths-ignore: ['n8n-node/**', '.github/workflows/n8n-node.yaml']
 
 permissions:
   contents: write # semantic-release pushes tags + releases

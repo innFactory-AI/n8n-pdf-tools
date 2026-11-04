@@ -1,0 +1,97 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# n8n community node (n8n-node/)
+#
+#   pull requests + main: lint, build, pack, then an end-to-end run in a real n8n
+#                         (scripts/n8n_e2e.py) against the service image built from this commit
+#   tag node-vX.Y.Z:      build + pack, attach the .tgz to a GitHub release (installable from its
+#                         URL without any registry account) and, if vars.NPM_PUBLISH == 'true',
+#                         publish to npmjs with provenance (trusted publishing or secrets.NPM_TOKEN)
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: n8n node
+
+on:
+  push:
+    branches: [main]
+    tags: ['node-v*.*.*']
+    paths: ['n8n-node/**', 'app/**', 'scripts/n8n_e2e.py', '.github/workflows/n8n-node.yaml']
+  pull_request:
+    branches: [main]
+    paths: ['n8n-node/**', 'app/**', 'scripts/n8n_e2e.py', '.github/workflows/n8n-node.yaml']
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: n8n-node
+
+jobs:
+  build:
+    name: Lint, build & e2e
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: npm
+          cache-dependency-path: n8n-node/package-lock.json
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run build
+      - run: npm pack
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - run: pip install reportlab
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: n8n-pdf-tools:ci
+          cache-from: type=gha
+      - name: End-to-end in n8n
+        working-directory: .
+        run: python scripts/n8n_e2e.py --image n8n-pdf-tools:ci --tarball n8n-node/n8n-nodes-*.tgz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: n8n-node-package
+          path: n8n-node/*.tgz
+
+  publish:
+    name: Publish
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: startsWith(github.ref, 'refs/tags/node-v')
+    permissions:
+      contents: write # GitHub release
+      id-token: write # npm provenance / trusted publishing
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          registry-url: https://registry.npmjs.org
+      - run: npm ci
+      - name: Check tag matches package.json
+        run: |
+          tag="${GITHUB_REF_NAME#node-v}"
+          version="$(node -p "require('./package.json').version")"
+          [ "$tag" = "$version" ] || { echo "tag $tag != package.json $version"; exit 1; }
+      - run: npm run build
+      - run: npm pack
+      - name: GitHub release with tarball
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" ./*.tgz \
+            --title "n8n node ${GITHUB_REF_NAME#node-v}" \
+            --notes "Install: see n8n-node/README.md. Tarball: $(ls *.tgz)"
+      - name: Publish to npm
+        if: vars.NPM_PUBLISH == 'true'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --provenance --access public

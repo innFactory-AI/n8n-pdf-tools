@@ -14,6 +14,10 @@ These libraries use MPL, BSD, MIT or Apache licenses. PyMuPDF (AGPL) is not used
 
 ## Calling it from n8n
 
+The easiest way is the **PDF Tools** community node in [`n8n-node/`](n8n-node/README.md), which has
+every operation as a form and handles binaries, multiple output files and errors. The plain HTTP
+Request node also works:
+
 The service runs at `http://n8n-pdf-tools.n8n.svc.cluster.local:8080`. Interactive API docs (Swagger) are at `/docs`.
 
 HTTP Request node settings:
@@ -133,7 +137,7 @@ JSON (`/v1/pipeline/json`), for example from an n8n Code node or when the PDF is
 | `API_TOKEN` | – | if set, every `/v1` call needs `Authorization: Bearer <token>` or `X-API-Key: <token>` |
 | `FONT_PATH` | DejaVu Sans | font for watermarks and page numbers (Unicode); falls back to Helvetica |
 
-Health: `GET /healthz`, `GET /readyz`, `GET /version`.
+Health: `GET /healthz`, `GET /readyz`, `GET /version` (open), `GET /v1/ping` (behind the token, for credential tests).
 
 ## Deploy (manual)
 
