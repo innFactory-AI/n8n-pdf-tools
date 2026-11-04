@@ -141,16 +141,24 @@ Health: `GET /healthz`, `GET /readyz`, `GET /version` (open), `GET /v1/ping` (be
 
 ## Deploy (manual)
 
+Into the namespace where n8n runs (`n8n`), so n8n reaches it as `http://n8n-pdf-tools:8080`:
+
 ```sh
-# set the image tag (+ digest from the release's CI summary) in deploy/k8s.yaml, then:
+# 1. service: Deployment + ClusterIP Service + NetworkPolicy (image pinned by tag + digest)
 kubectl -n n8n apply -f deploy/k8s.yaml
 kubectl -n n8n rollout status deploy/n8n-pdf-tools
-kubectl -n n8n run curl --rm -it --image=curlimages/curl --restart=Never -- \
-  curl -s http://n8n-pdf-tools:8080/version
+kubectl -n n8n exec deploy/n8n -c n8n -- wget -qO- http://n8n-pdf-tools:8080/version
+
+# 2. n8n node from its GitHub release (restarts n8n)
+deploy/install-n8n-node.sh 0.1.0
 ```
 
+In n8n, add the **PDF Tools** node. *Authentication: None (In-Cluster)* is the default and needs
+no credential. For a new service version, update the image tag + digest in `deploy/k8s.yaml`
+(the digest is in the release's CI summary) and apply it again.
+
 The pod runs non-root with a read-only root filesystem. All work happens in memory and in
-`/tmp` (emptyDir); nothing is stored.
+`/tmp` (emptyDir); nothing is stored. There is no ingress, so the service is not reachable from outside the cluster.
 
 ## Development
 
