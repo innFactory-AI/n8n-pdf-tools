@@ -41,44 +41,28 @@ No OCR. A scan without a text layer returns `has_text: false` from Extract Text;
 
 ## Installation
 
-Self-hosted n8n ≥ 1.x. Tested with n8n 2.44.6.
-
-### A) From npm via the n8n UI (once published)
-
-*Settings → Community Nodes → Install*, package name `n8n-nodes-innfactory-pdf-tools`.
-
-Or with environment variables (n8n ≥ 2.21; note that this mode uninstalls community packages that
-aren't in the list):
-
-```
-N8N_COMMUNITY_PACKAGES_MANAGED_BY_ENV=true
-N8N_COMMUNITY_PACKAGES=[{"name":"n8n-nodes-innfactory-pdf-tools","version":"0.1.0"}]
-# unverified packages need N8N_UNVERIFIED_PACKAGES_ENABLED=true (default) or a pinned "checksum"
-```
-
-### B) From the GitHub release tarball (no npm account or registry needed)
-
-Every `node-v*` release attaches the package `.tgz`. Install it into the n8n data volume
-(`/home/node/.n8n` is on a PVC, so it survives restarts), then restart n8n:
+Self-hosted n8n. Tested with n8n 2.44.6 and 2.45.7. The package is **not on npm**; each `node-v*`
+release on GitHub has the `.tgz` attached. Install it into the running n8n with:
 
 ```sh
-kubectl -n n8n exec deploy/n8n -c n8n -- sh -c '
-  mkdir -p ~/.n8n/nodes && cd ~/.n8n/nodes &&
-  npm i --no-audit --no-fund --legacy-peer-deps --ignore-scripts \
-    https://github.com/innFactory-AI/n8n-pdf-tools/releases/download/node-v0.1.0/n8n-nodes-innfactory-pdf-tools-0.1.0.tgz'
-kubectl -n n8n rollout restart deploy/n8n
+deploy/install-n8n-node.sh 0.1.0        # version, optional namespace (default n8n)
 ```
 
-`--legacy-peer-deps` matters: without it npm tries to install all of `n8n-workflow`. The node then
-shows up in the node panel, but not under *Settings → Community Nodes*. To update, run the same
-command with the new URL.
+The script does the following:
+- downloads the release tarball inside the n8n pod and unpacks it into `~/.n8n/nodes/node_modules`
+  (the n8n PVC, so it survives restarts)
+- adds it to `~/.n8n/nodes/package.json`
+- restarts `deploy/n8n`; with the `Recreate` strategy that means a short downtime
 
-### Why not GitHub Packages / GHCR?
+It does not run `npm install`, so the other community nodes stay untouched. To update, run it again
+with the new version.
 
-GHCR is a container registry, and n8n cannot install nodes from container images. GitHub's npm
-registry (`npm.pkg.github.com`) needs a token even for public packages. n8n could use it via
-`N8N_COMMUNITY_PACKAGES_REGISTRY` + `N8N_COMMUNITY_PACKAGES_AUTH_TOKEN`, but then *all* community
-packages would come from that registry. Use npmjs (A) or the tarball (B) instead.
+The node then shows up in the node panel as **PDF Tools**, but not under *Settings → Community
+Nodes*, because that page only lists packages installed through the UI.
+
+Why not GHCR or the GitHub npm registry? GHCR holds container images, and n8n can't install nodes
+from those. GitHub's npm registry needs a token even for public packages, and pointing n8n at it
+(`N8N_COMMUNITY_PACKAGES_REGISTRY`) would move *all* community packages to that registry.
 
 ## Development
 
@@ -92,4 +76,5 @@ python scripts/n8n_e2e.py --image n8n-pdf-tools:dev --tarball n8n-node/n8n-nodes
 
 Release: bump `version` in `package.json` (and `CHANGELOG.md`), merge, then
 `git tag node-v<version> && git push origin node-v<version>`. CI builds the package, runs the e2e
-test, creates the GitHub release with the tarball and publishes to npm if `vars.NPM_PUBLISH` is `true`.
+test and creates the GitHub release with the tarball. npm publishing exists in CI but is off
+(`vars.NPM_PUBLISH`).
