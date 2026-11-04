@@ -181,6 +181,11 @@ async def version() -> dict[str, str]:
     return {"name": "n8n-pdf-tools", "version": settings.version}
 
 
+@app.get("/v1/ping", summary="Authenticated no-op, e.g. for the n8n credential test")
+async def ping() -> dict[str, str]:
+    return {"status": "ok", "version": settings.version}
+
+
 # ---------------------------------------------------------------- read
 
 

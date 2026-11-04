@@ -1,0 +1,57 @@
+{
+	"name": "n8n-nodes-innfactory-pdf-tools",
+	"version": "0.1.0",
+	"description": "n8n node for n8n-pdf-tools: split, merge, watermark, page numbers, letterhead, forms, text, render, compress and encrypt PDFs",
+	"license": "MIT",
+	"homepage": "https://github.com/innFactory-AI/n8n-pdf-tools/tree/main/n8n-node#readme",
+	"keywords": [
+		"n8n-community-node-package",
+		"pdf",
+		"split",
+		"merge",
+		"watermark"
+	],
+	"author": {
+		"name": "innFactory AI",
+		"email": "info@innfactory.de"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/innFactory-AI/n8n-pdf-tools.git",
+		"directory": "n8n-node"
+	},
+	"scripts": {
+		"build": "n8n-node build",
+		"build:watch": "tsc --watch",
+		"dev": "n8n-node dev",
+		"lint": "n8n-node lint",
+		"lint:fix": "n8n-node lint --fix",
+		"format": "prettier --write nodes credentials",
+		"format:check": "prettier --check nodes credentials",
+		"prepublishOnly": "n8n-node prerelease"
+	},
+	"files": [
+		"dist",
+		"README.md",
+		"CHANGELOG.md"
+	],
+	"n8n": {
+		"n8nNodesApiVersion": 1,
+		"strict": true,
+		"credentials": [
+			"dist/credentials/PdfToolsApi.credentials.js"
+		],
+		"nodes": [
+			"dist/nodes/PdfTools/PdfTools.node.js"
+		]
+	},
+	"devDependencies": {
+		"@n8n/node-cli": "^0.55.5",
+		"eslint": "9.32.0",
+		"prettier": "3.6.2",
+		"typescript": "5.9.2"
+	},
+	"peerDependencies": {
+		"n8n-workflow": "*"
+	}
+}
