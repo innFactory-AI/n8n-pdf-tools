@@ -16,7 +16,6 @@ on:
     tags: ['node-v*.*.*']
     paths: ['n8n-node/**', 'app/**', 'scripts/n8n_e2e.py', '.github/workflows/n8n-node.yaml']
   pull_request:
-    branches: [main]
     paths: ['n8n-node/**', 'app/**', 'scripts/n8n_e2e.py', '.github/workflows/n8n-node.yaml']
 
 permissions:

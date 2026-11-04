@@ -201,15 +201,26 @@ export class PdfTools implements INodeType {
 		usableAsTool: true,
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
-		credentials: [{ name: 'pdfToolsApi', required: true }],
+		credentials: [
+			{
+				name: 'pdfToolsApi',
+				required: true,
+				displayOptions: { show: { authentication: ['pdfToolsApi'] } },
+			},
+		],
 		properties,
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
-		const credentials = await this.getCredentials('pdfToolsApi');
-		const baseUrl = String(credentials.baseUrl).replace(/\/+$/, '');
+		// In the cluster no credential is needed: the service is reachable by name and runs without a token
+		const authentication = this.getNodeParameter('authentication', 0) as string;
+		const rawBaseUrl =
+			authentication === 'pdfToolsApi'
+				? (await this.getCredentials('pdfToolsApi')).baseUrl
+				: this.getNodeParameter('serviceUrl', 0);
+		const baseUrl = String(rawBaseUrl).replace(/\/+$/, '');
 		const returnData: INodeExecutionData[] = [];
 		const node = this.getNode();
 
@@ -237,11 +248,11 @@ export class PdfTools implements INodeType {
 				timeout: 300_000,
 			};
 			if (binaryResponse) request.encoding = 'arraybuffer';
-			const response = (await this.helpers.httpRequestWithAuthentication.call(
-				this,
-				'pdfToolsApi',
-				request,
-			)) as { statusCode: number; body: unknown };
+			const response = (
+				authentication === 'pdfToolsApi'
+					? await this.helpers.httpRequestWithAuthentication.call(this, 'pdfToolsApi', request)
+					: await this.helpers.httpRequest(request)
+			) as { statusCode: number; body: unknown };
 			let body = response.body;
 			if (response.statusCode >= 400) {
 				if (Buffer.isBuffer(body) || body instanceof ArrayBuffer) {

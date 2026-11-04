@@ -122,6 +122,34 @@ const pagesOption = (
 
 export const properties: INodeProperties[] = [
 	{
+		displayName: 'Authentication',
+		name: 'authentication',
+		type: 'options',
+		noDataExpression: true,
+		options: [
+			{
+				name: 'None (In-Cluster)',
+				value: 'none',
+				description: 'Call the service by its cluster URL without a token',
+			},
+			{
+				name: 'PDF Tools API Credential',
+				value: 'pdfToolsApi',
+				description: 'Use a credential with URL and token, e.g. when the service has API_TOKEN set',
+			},
+		],
+		default: 'none',
+	},
+	{
+		displayName: 'Service URL',
+		name: 'serviceUrl',
+		type: 'string',
+		default: 'http://n8n-pdf-tools:8080',
+		displayOptions: { show: { authentication: ['none'] } },
+		description:
+			'URL of n8n-pdf-tools. In the same namespace as n8n the service name is enough; otherwise use http://n8n-pdf-tools.NAMESPACE.svc.cluster.local:8080.',
+	},
+	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',

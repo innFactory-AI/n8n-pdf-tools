@@ -29,14 +29,15 @@ No OCR. A scan without a text layer returns `has_text: false` from Extract Text;
 - Errors come with the service's message (e.g. `page 99 out of range (document has 5 pages)`).
   *On Error → Continue* puts it into `error`.
 
-## Credentials
+## Connection and credentials
 
-**PDF Tools API**
-- **Base URL**: `http://n8n-pdf-tools:8080`, which is the default when the service runs in the same
-  namespace as n8n. From another namespace use `http://n8n-pdf-tools.<namespace>.svc.cluster.local:8080`.
-- **API Token**: only needed if the service has `API_TOKEN` set.
-
-The credential test calls `GET /v1/ping`, so it catches both a wrong URL and a wrong token.
+**Authentication** on the node:
+- **None (In-Cluster)**, the default: no credential needed. The node calls the **Service URL**,
+  default `http://n8n-pdf-tools:8080`, which is right when the service runs in the same namespace as
+  n8n. From another namespace use `http://n8n-pdf-tools.<namespace>.svc.cluster.local:8080`.
+- **PDF Tools API Credential**: for a service with `API_TOKEN` set, or to manage the URL centrally.
+  The credential has **Base URL** and **API Token** (sent as `X-API-Key`). Its test calls
+  `GET /v1/ping`, so it catches both a wrong URL and a wrong token.
 
 ## Installation
 

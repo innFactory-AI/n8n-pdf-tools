@@ -62,8 +62,6 @@ def workflow() -> dict:
 
     def node(name, typ, params, extra=None):
         n = {"id": name, "name": name, "type": typ, "typeVersion": 1, "position": [0, 0], "parameters": params}
-        if typ == NODE:
-            n["credentials"] = cred
         n.update(extra or {})
         nodes.append(n)
         return name
@@ -83,6 +81,10 @@ def workflow() -> dict:
     link(start, rs)
     link(start, rf)
     pdf("Info", {"operation": "info"}, rs)
+    # credential against the token-protected instance, and the same instance without credential
+    pdf("Info Credential", {"operation": "info", "authentication": "pdfToolsApi"}, rs, {"credentials": cred})
+    no_token = {"operation": "info", "serviceUrl": "http://pdf-auth:8080"}
+    pdf("Info No Token", no_token, rs, {"onError": "continueRegularOutput"})
     split = pdf("Split", {"operation": "split", "splitMode": "every", "every": 2}, rs)
     merge = pdf("Merge", {"operation": "merge", "combineMode": "items"}, split)
     pdf("Merged Info", {"operation": "info"}, merge)
@@ -163,6 +165,8 @@ def workflow() -> dict:
 
 EXPECT = {
     "Info": lambda items: items[0]["json"]["page_count"] == 5,
+    "Info Credential": lambda items: items[0]["json"]["page_count"] == 5,
+    "Info No Token": lambda items: "token" in items[0]["json"]["error"].lower(),
     "Split": lambda items: (
         [i["json"]["fileName"] for i in items] == ["sample_p1-2.pdf", "sample_p3-4.pdf", "sample_p5.pdf"]
     ),
@@ -210,17 +214,19 @@ def main() -> int:
     sample_pdfs(work / "data")
     shutil.copy(args.tarball, work / "node.tgz")
     creds = [{"id": "pdfcred1", "name": "PDF Tools", "type": "pdfToolsApi",
-              "data": {"baseUrl": "http://n8n-pdf-tools:8080", "apiToken": ""}}]  # fmt: skip
+              "data": {"baseUrl": "http://pdf-auth:8080/", "apiToken": "s3cret"}}]  # fmt: skip
     (work / "creds.json").write_text(json.dumps(creds))
     (work / "wf.json").write_text(json.dumps([workflow()]))
     sh("chmod", "-R", "a+rwX", str(work))
 
-    containers = ["n8n-pdf-tools", "n8n-e2e"]
+    containers = ["n8n-pdf-tools", "pdf-auth", "n8n-e2e"]
     sh("docker", "rm", "-f", *containers, check=False, capture=True)
     sh("docker", "network", "create", NET, check=False, capture=True)
     try:
         sh("docker", "run", "-d", "--name", "n8n-pdf-tools", "--network", NET, "--read-only", "--tmpfs", "/tmp",
            args.image, capture=True)  # fmt: skip
+        sh("docker", "run", "-d", "--name", "pdf-auth", "--network", NET, "-e", "API_TOKEN=s3cret", args.image,
+           capture=True)  # fmt: skip
         sh("docker", "run", "-d", "--name", "n8n-e2e", "--network", NET, "-v", f"{work}:/e2e",
            "-e", "N8N_ENCRYPTION_KEY=e2e", "-e", "N8N_RESTRICT_FILE_ACCESS_TO=/e2e",
            "--entrypoint", "sh", args.n8n, "-c", "sleep infinity", capture=True)  # fmt: skip
