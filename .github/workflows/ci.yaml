@@ -14,12 +14,13 @@
 
 name: CI/CD
 
+# n8n-node/** is not ignored: the image bundles the node (/opt/n8n-node), so a node change is a new image.
 on:
   push:
     branches: [main]
-    paths-ignore: ['n8n-node/**', '.github/workflows/n8n-node.yaml']
+    paths-ignore: ['.github/workflows/n8n-node.yaml']
   pull_request:
-    paths-ignore: ['n8n-node/**', '.github/workflows/n8n-node.yaml']
+    paths-ignore: ['.github/workflows/n8n-node.yaml']
 
 permissions:
   contents: write # semantic-release pushes tags + releases

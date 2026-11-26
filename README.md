@@ -139,7 +139,18 @@ JSON (`/v1/pipeline/json`), for example from an n8n Code node or when the PDF is
 
 Health: `GET /healthz`, `GET /readyz`, `GET /version` (open), `GET /v1/ping` (behind the token, for credential tests).
 
-## Deploy (manual)
+## Deploy
+
+### companyGPT (Terraform)
+
+In companyGPT tenants, set `enable_n8n_pdf_tools = true` (next to `enable_n8n`). Terraform then
+deploys the service in the `n8n` namespace and installs the node into n8n: an init container of
+the n8n pod copies `/opt/n8n-node` from this image (the node, built from `n8n-node/` of the same
+commit) into an `emptyDir` mounted at `~/.n8n/nodes/node_modules/n8n-nodes-innfactory-pdf-tools`.
+No npm, no internet, other community nodes stay untouched, and turning the flag off removes both.
+Service and node always have the same version: the image pin in companyGPT (`n8n_pdf_tools_image`).
+
+### Manual
 
 Into the namespace where n8n runs (`n8n`), so n8n reaches it as `http://n8n-pdf-tools:8080`:
 

@@ -7,3 +7,6 @@
 tests
 deploy
 *.md
+n8n-node/node_modules
+n8n-node/dist
+n8n-node/*.tgz
