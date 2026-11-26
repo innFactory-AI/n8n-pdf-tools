@@ -21,6 +21,8 @@ The user docs (API, n8n usage, configuration, deploy) are in `README.md`; keep t
 - No AGPL dependencies (no PyMuPDF). No OCR (that goes to Mistral).
 - Requests run in a thread pool limited by `MAX_CONCURRENT_JOBS`; keep endpoints async and do the PDF work in `work()`.
 - Pin runtime deps in `requirements.lock` (`make lock`); `pyproject.toml` holds ranges and tool config.
+- The image also bundles the n8n node (`n8n-node/`, built in the Dockerfile) under `/opt/n8n-node`;
+  companyGPT copies it into n8n with an init container. Keep that path stable, it is a contract.
 - Conventional commits; `feat`/`fix` on `main` creates a release and image (`.github/workflows/ci.yaml`).
 
 ## Verify

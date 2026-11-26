@@ -41,8 +41,12 @@ No OCR. A scan without a text layer returns `has_text: false` from Extract Text;
 
 ## Installation
 
-Self-hosted n8n. Tested with n8n 2.44.6 and 2.45.7. The package is **not on npm**; each `node-v*`
-release on GitHub has the `.tgz` attached. Install it into the running n8n with:
+Self-hosted n8n. Tested with n8n 2.44.6 and 2.45.7. The package is **not on npm**.
+
+In companyGPT tenants nothing is installed by hand: `enable_n8n_pdf_tools = true` deploys the
+service and puts the node into n8n from the service image, which bundles it under `/opt/n8n-node`
+(see the [service README](../README.md#deploy)). Anywhere else, each `node-v*` release on GitHub has
+the `.tgz` attached. Install it into the running n8n with:
 
 ```sh
 deploy/install-n8n-node.sh 0.1.0        # version, optional namespace (default n8n)

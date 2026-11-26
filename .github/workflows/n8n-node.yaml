@@ -55,6 +55,9 @@ jobs:
       - name: End-to-end in n8n
         working-directory: .
         run: python scripts/n8n_e2e.py --image n8n-pdf-tools:ci --tarball n8n-node/n8n-nodes-*.tgz
+      - name: End-to-end in n8n (node bundled in the image, as deployed by companyGPT)
+        working-directory: .
+        run: python scripts/n8n_e2e.py --image n8n-pdf-tools:ci
       - uses: actions/upload-artifact@v4
         with:
           name: n8n-node-package

@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 """End-to-end test of the n8n node against a real n8n and the service image.
 
-Starts n8n-pdf-tools and n8n in docker, installs the packed node the same way as a manual
-install (~/.n8n/nodes), runs a workflow with the n8n CLI and checks every node's output.
+Starts n8n-pdf-tools and n8n in docker, installs the node, runs a workflow with the n8n CLI and
+checks every node's output. Two ways to install the node:
 
-    scripts/n8n_e2e.py --image n8n-pdf-tools:dev --tarball n8n-node/n8n-nodes-*.tgz [--n8n n8nio/n8n:2.44.6]
+- `--tarball`: `npm i` of the packed node into ~/.n8n/nodes, like a manual install.
+- without `--tarball`: the copy bundled in the image (/opt/n8n-node) is mounted read-only at
+  ~/.n8n/nodes/node_modules/<package>, like the init container in the companyGPT deployment.
+
+    scripts/n8n_e2e.py --image n8n-pdf-tools:dev [--tarball n8n-node/n8n-nodes-*.tgz] [--n8n n8nio/n8n:2.44.6]
 """
 
 import argparse
@@ -17,7 +21,8 @@ import tempfile
 import time
 from pathlib import Path
 
-NODE = "n8n-nodes-innfactory-pdf-tools.pdfTools"
+PKG = "n8n-nodes-innfactory-pdf-tools"
+NODE = f"{PKG}.pdfTools"
 NET = "pdf-e2e-net"
 
 
@@ -205,14 +210,28 @@ EXPECT = {
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--image", required=True)
-    ap.add_argument("--tarball", required=True)
+    ap.add_argument("--tarball", help="packed node; default: the copy bundled in the image")
     ap.add_argument("--n8n", default="n8nio/n8n:2.44.6")
     args = ap.parse_args()
 
     work = Path(tempfile.mkdtemp(prefix="pdf-e2e-"))
     (work / "data").mkdir()
     sample_pdfs(work / "data")
-    shutil.copy(args.tarball, work / "node.tgz")
+    mount: list[str] = []
+    if args.tarball:
+        shutil.copy(args.tarball, work / "node.tgz")
+        install = (
+            "mkdir -p ~/.n8n/nodes && cd ~/.n8n/nodes"
+            " && npm i --no-audit --no-fund --legacy-peer-deps --ignore-scripts /e2e/node.tgz >/dev/null"
+        )
+    else:
+        cid = sh("docker", "create", args.image, capture=True).strip()
+        try:
+            sh("docker", "cp", f"{cid}:/opt/n8n-node", str(work / "bundled"))
+        finally:
+            sh("docker", "rm", cid, capture=True)
+        mount = ["-v", f"{work / 'bundled'}:/home/node/.n8n/nodes/node_modules/{PKG}:ro"]
+        install = "true"
     creds = [{"id": "pdfcred1", "name": "PDF Tools", "type": "pdfToolsApi",
               "data": {"baseUrl": "http://pdf-auth:8080/", "apiToken": "s3cret"}}]  # fmt: skip
     (work / "creds.json").write_text(json.dumps(creds))
@@ -228,11 +247,10 @@ def main() -> int:
         sh("docker", "run", "-d", "--name", "pdf-auth", "--network", NET, "-e", "API_TOKEN=s3cret", args.image,
            capture=True)  # fmt: skip
         sh("docker", "run", "-d", "--name", "n8n-e2e", "--network", NET, "-v", f"{work}:/e2e",
-           "-e", "N8N_ENCRYPTION_KEY=e2e", "-e", "N8N_RESTRICT_FILE_ACCESS_TO=/e2e",
+           *mount, "-e", "N8N_ENCRYPTION_KEY=e2e", "-e", "N8N_RESTRICT_FILE_ACCESS_TO=/e2e",
            "--entrypoint", "sh", args.n8n, "-c", "sleep infinity", capture=True)  # fmt: skip
         script = (
-            "set -e; mkdir -p ~/.n8n/nodes && cd ~/.n8n/nodes"
-            " && npm i --no-audit --no-fund --legacy-peer-deps --ignore-scripts /e2e/node.tgz >/dev/null"
+            f"set -e; {install}"
             " && n8n import:credentials --input=/e2e/creds.json >>/e2e/n8n.log 2>&1"
             " && n8n import:workflow --input=/e2e/wf.json >>/e2e/n8n.log 2>&1"
             " && n8n execute --id e2eWf1 --rawOutput > /e2e/out.json 2>>/e2e/n8n.log"
@@ -243,6 +261,11 @@ def main() -> int:
             if ok.returncode == 0:
                 break
             time.sleep(1)
+        if mount:
+            # the runtime creates the mount point's parents as root; n8n writes ~/.n8n/nodes/package.json
+            # (the companyGPT init container does the same chown)
+            dirs = "/home/node/.n8n /home/node/.n8n/nodes /home/node/.n8n/nodes/node_modules"
+            sh("docker", "exec", "-u", "root", "n8n-e2e", "sh", "-c", f"chown node:node {dirs}")
         if subprocess.run(["docker", "exec", "n8n-e2e", "sh", "-c", script]).returncode != 0:
             log = work / "n8n.log"
             print(log.read_text()[-4000:] if log.exists() else "no n8n log")
