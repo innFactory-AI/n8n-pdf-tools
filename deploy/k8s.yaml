@@ -1,7 +1,7 @@
 # Manual deployment next to n8n (cluster-internal only, no ingress).
 #   kubectl -n n8n apply -f deploy/k8s.yaml
 # n8n calls it at http://n8n-pdf-tools.n8n.svc.cluster.local:8080/v1/...
-# Pin the image by tag + digest (see the release's CI summary).
+# Image pinned by tag + digest; for a new release take both from the CI run summary.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -22,7 +22,7 @@ spec:
         seccompProfile: { type: RuntimeDefault }
       containers:
         - name: pdf-tools
-          image: ghcr.io/innfactory-ai/n8n-pdf-tools:1.0.0
+          image: ghcr.io/innfactory-ai/n8n-pdf-tools:1.0.0@sha256:675cb57bda88d8a5cc3ea89ac5f3a73bda0e90d367c7a94cd4d343f0da0b67a9
           ports:
             - { name: http, containerPort: 8080 }
           env:
